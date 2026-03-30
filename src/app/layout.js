@@ -1,10 +1,7 @@
 import { Toaster } from 'react-hot-toast'
 import './globals.css'
 
-export const metadata = {
-  title: 'WebToAPK — Convert Any Website to Android App',
-  description: 'Convert any website URL into a downloadable Android APK instantly. Free, fast, no signup required.',
-}
+export const metadata = { title: 'WebToAPK - Convert Any Website to Android App', description: 'Convert any website URL into a downloadable Android APK instantly. Free, fast, no signup required.' }
 
 export default function RootLayout({ children }) {
   return (

@@ -1,6 +1,6 @@
 # WebToAPK
 
-Convert any website to a downloadable Android APK — built with Next.js.
+Convert any website to a downloadable Android APK - built with Next.js.
 
 ## Stack
 - **Next.js 14** (App Router)
@@ -19,7 +19,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000)
 
-## ngrok Setup (optional — for QR share feature)
+## ngrok Setup (optional - for QR share feature)
 
 1. Create a free account at https://ngrok.com
 2. Get your authtoken from the dashboard
