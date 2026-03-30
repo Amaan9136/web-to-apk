@@ -1,10 +1,9 @@
-import './globals.css'
 import { Toaster } from 'react-hot-toast'
+import './globals.css'
 
 export const metadata = {
   title: 'WebToAPK — Convert Any Website to Android App',
-  description: 'Paste a URL and download a ready-to-install APK in seconds. Convert any website to a full-screen React Native Android application.',
-  keywords: 'website to apk, convert website android app, url to apk, webview apk generator',
+  description: 'Convert any website URL into a downloadable Android APK instantly. Free, fast, no signup required.',
 }
 
 export default function RootLayout({ children }) {
@@ -12,7 +11,7 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <body>
         {children}
-        <Toaster position="top-right" toastOptions={{ style: { borderRadius: '12px', background: '#1e293b', color: '#f1f5f9', fontSize: '14px' }, success: { iconTheme: { primary: '#0ea5e9', secondary: '#f1f5f9' } } }} />
+        <Toaster position="top-center" toastOptions={{ duration: 4000, style: { background: '#1e293b', color: '#f1f5f9', borderRadius: '12px', fontSize: '14px' } }} />
       </body>
     </html>
   )

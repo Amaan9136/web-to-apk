@@ -7,6 +7,8 @@ Convert any website to a downloadable Android APK — built with Next.js.
 - **Tailwind CSS**
 - **Framer Motion**
 - **React Hot Toast**
+- **ngrok** (for QR share)
+- **qrcode** (QR generation)
 
 ## Getting Started
 
@@ -15,23 +17,30 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000)
 
-## How It Works
-1. User pastes a website URL (e.g. `https://devlabs.automatech.live`)
-2. Clicks **Convert to APK**
-3. The `/api/generate-apk` route builds an APK package wrapping the URL in a WebView
-4. The APK is streamed back and auto-downloaded
+## ngrok Setup (optional — for QR share feature)
 
-## Production APK Generation
+1. Create a free account at https://ngrok.com
+2. Get your authtoken from the dashboard
+3. Set it as an env variable:
 
-For real signed APKs with a full React Native / Capacitor build pipeline, set up:
-- Java 17+, Android SDK, Gradle
-- Update the API route to invoke a real build tool
+```bash
+NGROK_AUTHTOKEN=your_token_here npm run dev
+```
 
-The current implementation generates a valid APK structure that can be extended with a proper Android build system.
+When an APK is ready, clicking **Get QR Code & Share Link** will:
+- Start an ngrok tunnel
+- Generate a scannable QR code
+- Provide a direct download link valid until server restart
+
+## Repomix
+```bash
+repomix "D:\0 AMAAN MAIN\My NextJS\web-to-apk-maker" -o prompting/web-to-apk-repomix.md --style markdown --ignore "node_modules,.next,dist,build,.git,.turbo,coverage"
+```
 
 ## Deploy
+
 ```bash
 npm run build
 npm start

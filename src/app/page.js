@@ -2,70 +2,56 @@
 import { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
-import PhoneMockup from '@/components/PhoneMockup'
-import StepCard from '@/components/StepCard'
-import FeatureChip from '@/components/FeatureChip'
 import {
-  MdLink, MdDownload, MdSmartphone, MdRocketLaunch, MdCheckCircle,
-  MdSecurity, MdSpeed, MdFullscreen, MdAndroid, MdClose,
-  MdArrowForward, MdAutoAwesome, MdLanguage, MdRefresh,
+  MdAndroid, MdArrowForward, MdCheckCircle, MdDownload, MdRefresh,
+  MdLink, MdSmartphone, MdAutoAwesome, MdSecurity, MdSpeed, MdPhoneAndroid,
+  MdQrCode2, MdShare,
 } from 'react-icons/md'
-
-const STEPS = [
-  { title: 'Paste URL', description: 'Enter any website URL you want to convert', icon: MdLink },
-  { title: 'Click Convert', description: 'Hit the button and we generate your APK instantly', icon: MdRocketLaunch },
-  { title: 'Download APK', description: 'Save the APK and install it on any Android device', icon: MdDownload },
-]
+import PhoneMockup from '@/components/PhoneMockup'
+import FeatureChip from '@/components/FeatureChip'
+import StepCard from '@/components/StepCard'
+import NgrokModal from '@/components/NgrokModal'
 
 const FEATURES = [
-  { icon: MdFullscreen, label: 'Full Screen' },
-  { icon: MdSpeed, label: 'Lightweight' },
-  { icon: MdSecurity, label: 'No Data Stored' },
-  { icon: MdAndroid, label: 'Android Ready' },
-  { icon: MdAutoAwesome, label: 'Native Feel' },
-  { icon: MdLanguage, label: 'Any Website' },
+  { icon: MdSpeed, label: 'Instant Generation' },
+  { icon: MdSecurity, label: 'Secure & Private' },
+  { icon: MdPhoneAndroid, label: 'Full Screen App' },
+  { icon: MdAndroid, label: 'Android APK' },
+]
+
+const STEPS = [
+  { title: 'Paste URL', description: 'Enter any website URL like https://automatech.live', icon: MdLink },
+  { title: 'Convert', description: 'Click Convert to APK and wait a few seconds while we build your app', icon: MdAndroid },
+  { title: 'Download', description: 'Download your APK or scan the QR code on your phone', icon: MdDownload },
 ]
 
 function isValidUrl(url) {
-  try {
-    const u = new URL(url)
-    return u.protocol === 'http:' || u.protocol === 'https:'
-  } catch {
-    return false
-  }
+  try { const u = new URL(url); return u.protocol === 'http:' || u.protocol === 'https:' } catch { return false }
 }
 
-export default function HomePage() {
+export default function Home() {
   const [url, setUrl] = useState('')
   const [appName, setAppName] = useState('')
   const [loading, setLoading] = useState(false)
   const [progress, setProgress] = useState(0)
   const [done, setDone] = useState(false)
   const [downloadInfo, setDownloadInfo] = useState(null)
+  const [ngrokLoading, setNgrokLoading] = useState(false)
+  const [ngrokData, setNgrokData] = useState(null)
+  const [showNgrok, setShowNgrok] = useState(false)
   const inputRef = useRef(null)
   const progressRef = useRef(null)
 
   const simulateProgress = () => {
     setProgress(0)
     let p = 0
-    const steps = [
-      { target: 20, speed: 80 },
-      { target: 55, speed: 120 },
-      { target: 80, speed: 200 },
-      { target: 95, speed: 400 },
-    ]
+    const steps = [{ target: 20, speed: 80 }, { target: 55, speed: 120 }, { target: 80, speed: 200 }, { target: 95, speed: 400 }]
     let stepIdx = 0
     const tick = () => {
       if (stepIdx >= steps.length) return
       const { target, speed } = steps[stepIdx]
-      if (p < target) {
-        p = Math.min(p + 1, target)
-        setProgress(p)
-        progressRef.current = setTimeout(tick, speed)
-      } else {
-        stepIdx++
-        progressRef.current = setTimeout(tick, 200)
-      }
+      if (p < target) { p = Math.min(p + 1, target); setProgress(p); progressRef.current = setTimeout(tick, speed) }
+      else { stepIdx++; progressRef.current = setTimeout(tick, 200) }
     }
     progressRef.current = setTimeout(tick, 50)
   }
@@ -77,6 +63,7 @@ export default function HomePage() {
     setLoading(true)
     setDone(false)
     setDownloadInfo(null)
+    setNgrokData(null)
     simulateProgress()
 
     try {
@@ -98,6 +85,19 @@ export default function HomePage() {
       const name = res.headers.get('X-App-Name') || 'WebApp'
       const objectUrl = URL.createObjectURL(blob)
 
+      const reader = new FileReader()
+      reader.readAsDataURL(blob)
+      reader.onloadend = async () => {
+        const base64 = reader.result.split(',')[1]
+        try {
+          await fetch('/api/ngrok-status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ apkName: name, apkData: base64 }),
+          })
+        } catch {}
+      }
+
       setDownloadInfo({ objectUrl, name, size: (blob.size / 1024).toFixed(1) })
       setDone(true)
       toast.success(`APK ready! Download "${name}.apk"`)
@@ -115,6 +115,25 @@ export default function HomePage() {
     }
   }
 
+  const handleNgrok = async () => {
+    if (!downloadInfo) return
+    setNgrokLoading(true)
+    try {
+      const res = await fetch('/api/ngrok-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apkName: downloadInfo.name }),
+      })
+      const data = await res.json()
+      if (data.success) { setNgrokData(data); setShowNgrok(true) }
+      else toast.error(data.message || 'ngrok unavailable. Set NGROK_AUTHTOKEN env variable.')
+    } catch {
+      toast.error('Failed to start ngrok tunnel')
+    } finally {
+      setNgrokLoading(false)
+    }
+  }
+
   const handleReset = () => {
     if (downloadInfo?.objectUrl) URL.revokeObjectURL(downloadInfo.objectUrl)
     setUrl('')
@@ -122,6 +141,7 @@ export default function HomePage() {
     setDone(false)
     setDownloadInfo(null)
     setProgress(0)
+    setNgrokData(null)
     setTimeout(() => inputRef.current?.focus(), 100)
   }
 
@@ -129,6 +149,8 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen">
+      <NgrokModal isOpen={showNgrok} onClose={() => setShowNgrok(false)} ngrokData={ngrokData} apkName={downloadInfo?.name} />
+
       <div className="relative overflow-hidden">
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute -top-40 -right-40 w-96 h-96 bg-primary-400/20 rounded-full blur-3xl animate-pulse-slow" />
@@ -154,7 +176,7 @@ export default function HomePage() {
 
               <motion.p initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="text-slate-600 text-lg mb-8 leading-relaxed">
                 Paste a URL like{' '}
-                <span className="font-mono text-primary-600 text-sm bg-primary-50 px-1.5 py-0.5 rounded">https://devlabs.automatech.live</span>
+                <span className="font-mono text-primary-600 text-sm bg-primary-50 px-1.5 py-0.5 rounded">https://automatech.live</span>
                 {' '}and get a full-screen native-feel Android APK in seconds.
               </motion.p>
 
@@ -172,7 +194,7 @@ export default function HomePage() {
                             value={url}
                             onChange={e => setUrl(e.target.value)}
                             onKeyDown={handleKeyDown}
-                            placeholder="https://devlabs.automatech.live"
+                            placeholder="https://automatech.live"
                             disabled={loading}
                             className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 bg-white/80 text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all disabled:opacity-50 text-sm"
                           />
@@ -209,7 +231,7 @@ export default function HomePage() {
                               transition={{ duration: 0.3 }}
                             />
                           </div>
-                          <div className="flex gap-2 text-xs text-slate-400">
+                          <div className="flex gap-2 text-xs text-slate-400 flex-wrap">
                             {['Parsing URL', 'Generating manifest', 'Bundling assets', 'Compiling APK'].map((step, i) => (
                               <span key={step} className={`flex items-center gap-0.5 ${progress >= (i + 1) * 25 ? 'text-primary-600' : ''}`}>
                                 {progress >= (i + 1) * 25 && <MdCheckCircle className="text-xs" />}
@@ -252,17 +274,35 @@ export default function HomePage() {
                           <strong>{downloadInfo?.name}.apk</strong> ({downloadInfo?.size} KB) — download started automatically
                         </p>
                       </div>
+
                       <div className="flex gap-3">
                         <a
                           href={downloadInfo?.objectUrl}
                           download={`${downloadInfo?.name}.apk`}
-                          className="flex-1 py-3 rounded-xl bg-gradient-to-r from-primary-600 to-primary-500 text-white font-semibold flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all"
+                          className="flex-1 py-3 rounded-xl bg-gradient-to-r from-primary-600 to-primary-500 text-white font-semibold flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all text-sm"
                         >
                           <MdDownload className="text-xl" /> Download Again
                         </a>
                         <button onClick={handleReset} className="px-4 py-3 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all flex items-center gap-1.5 text-sm">
                           <MdRefresh className="text-lg" /> New
                         </button>
+                      </div>
+
+                      <div className="border-t border-slate-100 pt-4">
+                        <p className="text-xs text-slate-500 mb-3">📱 Want to download on your phone?</p>
+                        <motion.button
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={handleNgrok}
+                          disabled={ngrokLoading}
+                          className="w-full py-3 rounded-xl bg-gradient-to-r from-violet-600 to-violet-500 text-white font-semibold flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all text-sm disabled:opacity-70"
+                        >
+                          {ngrokLoading ? (
+                            <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Generating QR…</>
+                          ) : (
+                            <><MdQrCode2 className="text-xl" /> Get QR Code &amp; Share Link<MdShare className="text-lg" /></>
+                          )}
+                        </motion.button>
                       </div>
                     </motion.div>
                   )}
@@ -296,8 +336,8 @@ export default function HomePage() {
       <div className="relative z-10 py-8 border-t border-slate-200/50">
         <p className="text-center text-slate-400 text-sm">
           Built with ❤️ by{' '}
-          <a href="https://devlabs.automatech.live" target="_blank" rel="noreferrer" className="text-primary-500 hover:text-primary-600 font-medium transition-colors">
-            DevLabs · Automatech
+          <a href="https://automatech.live" target="_blank" rel="noreferrer" className="text-primary-500 hover:text-primary-600 font-medium transition-colors">
+            Automatech
           </a>
         </p>
       </div>
