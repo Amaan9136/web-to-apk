@@ -1,8 +1,8 @@
 'use client'
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
-import { MdAndroid, MdArrowForward, MdCheckCircle, MdDownload, MdRefresh, MdLink, MdSmartphone, MdAutoAwesome, MdSecurity, MdSpeed, MdPhoneAndroid, MdQrCode2, MdShare } from 'react-icons/md'
+import { MdAndroid, MdArrowForward, MdCheckCircle, MdDownload, MdRefresh, MdLink, MdSmartphone, MdAutoAwesome, MdSecurity, MdSpeed, MdPhoneAndroid, MdQrCode2, MdShare, MdAddToHomeScreen } from 'react-icons/md'
 import PhoneMockup from '@/components/PhoneMockup'
 import FeatureChip from '@/components/FeatureChip'
 import StepCard from '@/components/StepCard'
@@ -22,8 +22,15 @@ export default function Home() {
   const [ngrokLoading, setNgrokLoading] = useState(false)
   const [ngrokData, setNgrokData] = useState(null)
   const [showNgrok, setShowNgrok] = useState(false)
+  const [pwaPrompt, setPwaPrompt] = useState(null)
   const inputRef = useRef(null)
   const progressRef = useRef(null)
+
+  useEffect(() => {
+    const handler = e => { e.preventDefault(); setPwaPrompt(e) }
+    window.addEventListener('beforeinstallprompt', handler)
+    return () => window.removeEventListener('beforeinstallprompt', handler)
+  }, [])
 
   const simulateProgress = () => {
     setProgress(0)
@@ -55,11 +62,10 @@ export default function Home() {
       reader.readAsDataURL(blob)
       reader.onloadend = async () => {
         const base64 = reader.result.split(',')[1]
-        try { await fetch('/api/ngrok-status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ apkName: name, apkData: base64 }) }) } catch {}
+        try { await fetch('/api/ngrok-status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ apkName: name, apkData: base64 }) }) } catch { }
       }
       setDownloadInfo({ objectUrl, name, size: (blob.size / 1024).toFixed(1) }); setDone(true)
-      toast.success(`APK ready!`)
-      const a = document.createElement('a'); a.href = objectUrl; a.download = `${name}.apk`; a.click()
+      toast.success('APK ready!')
     } catch (err) {
       clearTimeout(progressRef.current); setProgress(0)
       toast.error(err.message || 'Something went wrong. Please try again.')
@@ -72,10 +78,17 @@ export default function Home() {
     try {
       const res = await fetch('/api/ngrok-status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ apkName: downloadInfo.name }) })
       const data = await res.json()
-      if (data.success) { setNgrokData(data); setShowNgrok(true) }
-      else toast.error(data.message || 'ngrok unavailable. Set NGROK_AUTHTOKEN env variable.')
+      if (data.success && data.qr) { setNgrokData(data); setShowNgrok(true) }
+      else toast.error(data.message || 'ngrok unavailable. Set NGROK_AUTHTOKENenv variable.')
     } catch { toast.error('Failed to start ngrok tunnel') }
     finally { setNgrokLoading(false) }
+  }
+
+  const handlePwaInstall = async () => {
+    if (!pwaPrompt) { toast('Open this site on your Android browser and use "Add to Home Screen"'); return }
+    pwaPrompt.prompt()
+    const { outcome } = await pwaPrompt.userChoice
+    if (outcome === 'accepted') { toast.success('App added to home screen!'); setPwaPrompt(null) }
   }
 
   const handleReset = () => {
@@ -150,13 +163,16 @@ export default function Home() {
                         <p className="text-slate-500 text-sm"><strong>{downloadInfo?.name}.apk</strong> · {downloadInfo?.size} KB - download started automatically</p>
                       </div>
                       <div className="flex gap-3">
-                        <a href={downloadInfo?.objectUrl} download={`${downloadInfo?.name}.apk`} className="flex-1 py-3 rounded-xl bg-gradient-to-r from-primary-600 to-primary-500 text-white font-semibold flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all text-sm"><MdDownload className="text-xl" />Download Again</a>
+                        <a href={downloadInfo?.objectUrl} download={`${downloadInfo?.name}.apk`} className="flex-1 py-3 rounded-xl bg-gradient-to-r from-primary-600 to-primary-500 text-white font-semibold flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all text-sm"><MdDownload className="text-xl" />Download</a>
                         <button onClick={handleReset} className="px-4 py-3 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-all flex items-center gap-1.5 text-sm"><MdRefresh className="text-lg" />New</button>
                       </div>
-                      <div className="border-t border-slate-100 pt-4">
-                        <p className="text-xs text-slate-500 mb-3">Want to download on your phone?</p>
+                      <div className="border-t border-slate-100 pt-4 space-y-2">
+                        <p className="text-xs text-slate-500 mb-1">Want to download on your phone?</p>
                         <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={handleNgrok} disabled={ngrokLoading} className="w-full py-3 rounded-xl bg-gradient-to-r from-violet-600 to-violet-500 text-white font-semibold flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all text-sm disabled:opacity-70">
                           {ngrokLoading ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />Generating QR…</> : <><MdQrCode2 className="text-xl" />Get QR Code &amp; Share Link<MdShare className="text-lg" /></>}
+                        </motion.button>
+                        <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={handlePwaInstall} className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-500 text-white font-semibold flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all text-sm">
+                          <MdAddToHomeScreen className="text-xl" />Add to Home Screen (PWA)
                         </motion.button>
                       </div>
                     </motion.div>

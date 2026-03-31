@@ -24,17 +24,17 @@ export default function NgrokModal({ isOpen, onClose, ngrokData, apkName }) {
               {ngrokData?.qr ? <div className="qr-container shadow-lg"><Image src={ngrokData.qr} alt="QR Code" width={180} height={180} /></div> : <div className="w-[180px] h-[180px] bg-slate-100 rounded-xl flex items-center justify-center"><div className="w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" /></div>}
             </div>
             <div className="text-center mb-4">
-              <div className="flex items-center gap-1 justify-center mb-1"><MdPhoneAndroid className="text-primary-500 text-sm" /><span className="text-slate-700 text-sm font-semibold">{apkName}.apk</span></div>
-              <p className="text-slate-400 text-xs">Scan the QR code with your Android phone to download</p>
+              <div className="flex items-center gap-1 justify-center mb-1"><MdPhoneAndroid className="text-primary-500 text-sm" /><span className="text-slate-800 text-sm font-semibold">{apkName}.apk</span></div>
+              <p className="text-slate-800 text-xs">Scan the QR code with your Android phone to download</p>
             </div>
             <div className="bg-slate-50 rounded-xl p-3 mb-4">
               <p className="text-xs text-slate-500 mb-1.5 flex items-center gap-1"><MdLink className="text-primary-500" />Direct link</p>
-              <p className="text-xs text-slate-700 font-mono break-all leading-relaxed">{ngrokData?.downloadUrl}</p>
+              <p className="text-xs text-slate-800 font-mono break-all leading-relaxed">{ngrokData?.downloadUrl}</p>
             </div>
             <button onClick={copyUrl} className="w-full py-2.5 rounded-xl bg-gradient-to-r from-primary-600 to-primary-500 text-white font-semibold flex items-center justify-center gap-2 text-sm shadow-md hover:shadow-lg transition-all">
               {copied ? <><MdCheckCircle className="text-lg" />Copied!</> : <><MdContentCopy className="text-lg" />Copy Download Link</>}
             </button>
-            <p className="text-center text-xs text-slate-400 mt-3">Temporary - expires when server restarts</p>
+            <p className="text-center text-xs text-slate-800 mt-3">Temporary - expires when server restarts</p>
           </motion.div>
         </motion.div>
       )}
