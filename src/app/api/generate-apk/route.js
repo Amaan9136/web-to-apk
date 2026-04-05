@@ -14,15 +14,13 @@ function crc32(buf) {
 
 function dosDateTime() {
   const d = new Date()
-  const date = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate()
-  const time = (d.getHours() << 11) | (d.getMinutes() << 5) | Math.floor(d.getSeconds() / 2)
-  return { date, time }
+  return { date: ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate(), time: (d.getHours() << 11) | (d.getMinutes() << 5) | Math.floor(d.getSeconds() / 2) }
 }
 
 function writeUint16LE(v) { return Buffer.from([v & 0xFF, (v >> 8) & 0xFF]) }
 function writeUint32LE(v) { return Buffer.from([v & 0xFF, (v >> 8) & 0xFF, (v >> 16) & 0xFF, (v >> 24) & 0xFF]) }
 
-function zipEntry(name, data) {
+function zipEntry(name, data, localOffset) {
   const nameBuf = Buffer.from(name, 'utf8')
   const dataBuf = Buffer.isBuffer(data) ? data : Buffer.from(data, 'utf8')
   const crc = crc32(dataBuf)
@@ -42,10 +40,10 @@ function zipEntry(name, data) {
     writeUint32LE(crc), writeUint32LE(dataBuf.length), writeUint32LE(dataBuf.length),
     writeUint16LE(nameBuf.length), writeUint16LE(0), writeUint16LE(0),
     writeUint16LE(0), writeUint16LE(0), writeUint32LE(0),
-    writeUint32LE(0),
+    writeUint32LE(localOffset),
     nameBuf
   ])
-  return { local, central, size: local.length }
+  return { local, central }
 }
 
 function buildAPK(url, appName) {
@@ -122,10 +120,26 @@ public class MainActivity extends Activity {
   @Override public void onBackPressed() { if (webView.canGoBack()) webView.goBack(); else super.onBackPressed(); }
 }`
 
-  const entries = []
-  let offset = 0
+  const dexMagic = Buffer.from([
+    0x64, 0x65, 0x78, 0x0A, 0x30, 0x33, 0x35, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x70, 0x00, 0x00, 0x00, 0x78, 0x56, 0x34, 0x12,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x70, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  ])
+
   const files = [
     ['AndroidManifest.xml', manifest],
+    ['classes.dex', dexMagic],
     ['res/xml/network_security_config.xml', networkSecurity],
     ['src/MainActivity.java', mainActivity],
     ['META-INF/MANIFEST.MF', `Manifest-Version: 1.0\nCreated-By: WebToAPK\nMain-Class: com.webtoapp.${pkg}.MainActivity\nApp-URL: ${url}\n`],
@@ -133,10 +147,10 @@ public class MainActivity extends Activity {
 
   const localParts = []
   const centralParts = []
+  let offset = 0
 
   for (const [name, content] of files) {
-    const entry = zipEntry(name, content)
-    entry.central = Buffer.concat([entry.central.slice(0, 42), writeUint32LE(offset), entry.central.slice(46)])
+    const entry = zipEntry(name, content, offset)
     localParts.push(entry.local)
     centralParts.push(entry.central)
     offset += entry.local.length
